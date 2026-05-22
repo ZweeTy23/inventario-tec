@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: inventario-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inventario
+      POSTGRES_PASSWORD: inventario_dev
+      POSTGRES_DB: inventario
+    ports:
+      # Exposed on 5433 to avoid colliding with the host Postgres on 5432.
+      - "5433:5432"
+    volumes:
+      - inventario-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventario -d inventario"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Optional: web UI at http://localhost:8081 (login admin@inventory.com / admin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: inventario-pgadmin
+    restart: unless-stopped
+    profiles: ["tools"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@inventory.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "8081:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  inventario-pgdata:
+    name: inventario-pgdata
