@@ -5,8 +5,6 @@
 
 datasource db {
   provider = "postgresql"
-<<<<<<< Updated upstream
-=======
   schemas  = ["auth", "catalog", "warehouse", "operations", "system_alerts"]
 }
 
@@ -112,6 +110,7 @@ model User {
   movements     Movement[]
   auditLogs     AuditLog[]
   notifications Notification[]
+  sessions      Session[]
 
   @@index([email])
   @@index([roleId])
@@ -305,7 +304,6 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
   @@schema("system_alerts")
->>>>>>> Stashed changes
 }
 
 generator client {

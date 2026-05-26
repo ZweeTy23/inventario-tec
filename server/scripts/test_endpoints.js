@@ -1,9 +1,13 @@
 (async ()=>{
+  async function safeParse(res) {
+    const text = await res.text();
+    try { return JSON.parse(text); } catch { return { _raw: text, status: res.status }; }
+  }
   const base = 'http://localhost:3000';
   const loginRes = await fetch(base + '/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@inventory.com', password: 'Admin123*' }),
+    body: JSON.stringify({ email: 'e2e.tester@example.local', password: 'Test1234' }),
   });
   const login = await loginRes.json();
   const token = login?.data?.token || login?.token;
@@ -13,20 +17,20 @@
 
   // Create category
   const catRes = await fetch(base + '/api/categories', { method: 'POST', headers: authHeader, body: JSON.stringify({ name: 'Test Category' }) });
-  const cat = await catRes.json();
+  const cat = await safeParse(catRes);
   const catId = cat?.data?.id;
   console.log('CAT_ID:' + (catId || JSON.stringify(cat)));
 
   // Create supplier
   const suppRes = await fetch(base + '/api/suppliers', { method: 'POST', headers: authHeader, body: JSON.stringify({ name: 'Test Supplier' }) });
-  const supp = await suppRes.json();
+  const supp = await safeParse(suppRes);
   const suppId = supp?.data?.id;
   console.log('SUPP_ID:' + (suppId || JSON.stringify(supp)));
 
   // Create product
   const prodBody = { categoryId: catId, supplierId: suppId, sku: 'TEST-SKU-001', name: 'Test Product', basePrice: 9.99 };
   const prodRes = await fetch(base + '/api/products', { method: 'POST', headers: authHeader, body: JSON.stringify(prodBody) });
-  const prod = await prodRes.json();
+  const prod = await safeParse(prodRes);
   const prodId = prod?.data?.id;
   console.log('PROD_ID:' + (prodId || JSON.stringify(prod)));
 
