@@ -11,6 +11,7 @@ async function createProduct(req, res) {
     if (!sup) return res.status(400).json({ message: 'supplier not found' });
 
     const created = await prisma.product.create({ data: { categoryId, supplierId, sku, name, basePrice: basePrice ?? 0, attributes: attributes ?? {} } });
+    try { await prisma.auditLog.create({ data: { userId: req.user?.id || null, action: 'CREATE', tableAffected: 'products', recordId: created.id, newData: created } }); } catch(e){}
     res.status(201).json({ data: created });
   } catch (e) {
     res.status(500).json({ message: 'Error creating product', error: e.message });
@@ -44,6 +45,7 @@ async function updateProduct(req, res) {
     const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ message: 'Not found' });
     const updated = await prisma.product.update({ where: { id }, data: body });
+    try { await prisma.auditLog.create({ data: { userId: req.user?.id || null, action: 'UPDATE', tableAffected: 'products', recordId: updated.id, oldData: existing, newData: updated } }); } catch(e){}
     res.json({ data: updated });
   } catch (e) {
     res.status(500).json({ message: 'Error updating product', error: e.message });
@@ -56,6 +58,7 @@ async function deleteProduct(req, res) {
     const p = await prisma.product.findUnique({ where: { id } });
     if (!p) return res.status(404).json({ message: 'Not found' });
     await prisma.product.delete({ where: { id } });
+    try { await prisma.auditLog.create({ data: { userId: req.user?.id || null, action: 'DELETE', tableAffected: 'products', recordId: id, oldData: p } }); } catch(e){}
     res.status(204).send();
   } catch (e) {
     res.status(500).json({ message: 'Error deleting product', error: e.message });

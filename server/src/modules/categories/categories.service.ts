@@ -35,6 +35,7 @@ export const categoryService = {
       if (!parent) throw new BadRequestError("Parent category does not exist");
     }
     const created = await categoryRepository.create({ name: input.name, parentId: input.parentId ?? null });
+    await createAuditLog({ userId: null as any, action: 'CREATE', table: 'categories', recordId: created.id, newData: created });
     return created;
   },
 
@@ -52,6 +53,7 @@ export const categoryService = {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
     });
+    await createAuditLog({ userId: null as any, action: 'UPDATE', table: 'categories', recordId: updated.id, oldData: existing, newData: updated });
     return updated;
   },
 
@@ -62,5 +64,6 @@ export const categoryService = {
       throw new BadRequestError("Cannot delete a category that has products or sub-categories");
     }
     await categoryRepository.delete(id);
+    await createAuditLog({ userId: null as any, action: 'DELETE', table: 'categories', recordId: id, oldData: existing });
   },
 };
