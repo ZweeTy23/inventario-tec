@@ -2,11 +2,6 @@
 // Prisma schema with PostgreSQL multi-schema, UUIDs, JSONB, native enums and soft deletes.
 // Docs: https://pris.ly/d/prisma-schema
 
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
 datasource db {
   provider = "postgresql"
   schemas  = ["auth", "catalog", "warehouse", "operations", "system_alerts"]
@@ -304,4 +299,37 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
   @@schema("system_alerts")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Tus modelos se quedan exactamente igual abajo (User, Role, AuditLog)
+model User {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String     @unique
+  password  String
+  roleId    Int
+  role      Role       @relation(fields: [roleId], references: [id])
+  auditLogs AuditLog[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  permissions String[]
+  users       User[]
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  ipAddress String?
+  createdAt DateTime @default(now())
 }
