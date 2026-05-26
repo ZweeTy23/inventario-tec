@@ -1,0 +1,30 @@
+﻿{
+    "data":  {
+                 "token":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNzQ3ZWY0ZS05NWRhLTRmYjYtYjI4Zi1lYjU0YTZhZGQxYzQiLCJlbWFpbCI6ImFkbWluQGludmVudG9yeS5jb20iLCJyb2xlSWQiOiIxODY1NzRhYi01MmY5LTRjNDItYmFjNC0wN2EwZGExMzcyY2EiLCJyb2xlTmFtZSI6IlNVUEVSX0FETUlOIiwicGVybWlzc2lvbnMiOlsiaW52ZW50b3J5LnZpZXciLCJpbnZlbnRvcnkuY3JlYXRlIiwiaW52ZW50b3J5LnVwZGF0ZSIsImludmVudG9yeS5kZWxldGUiLCJwcm9kdWN0cy52aWV3IiwicHJvZHVjdHMuY3JlYXRlIiwicHJvZHVjdHMudXBkYXRlIiwicHJvZHVjdHMuZGVsZXRlIiwibW92ZW1lbnRzLnZpZXciLCJtb3ZlbWVudHMuY3JlYXRlIiwibW92ZW1lbnRzLmFwcHJvdmUiLCJyZXBvcnRzLnZpZXciLCJhbGVydHMudmlldyIsInVzZXJzLm1hbmFnZSJdLCJpYXQiOjE3Nzk4MzI0NjUsImV4cCI6MTc3OTkxODg2NX0.MWMzOQRIB5RjlSKzJ9un1l7jLQuyW2FT6k6jwcA0pTs",
+                 "user":  {
+                              "id":  "a747ef4e-95da-4fb6-b28f-eb54a6add1c4",
+                              "name":  "Super Admin",
+                              "email":  "admin@inventory.com",
+                              "role":  {
+                                           "id":  "186574ab-52f9-4c42-bac4-07a0da1372ca",
+                                           "name":  "SUPER_ADMIN"
+                                       },
+                              "permissions":  [
+                                                  "inventory.view",
+                                                  "inventory.create",
+                                                  "inventory.update",
+                                                  "inventory.delete",
+                                                  "products.view",
+                                                  "products.create",
+                                                  "products.update",
+                                                  "products.delete",
+                                                  "movements.view",
+                                                  "movements.create",
+                                                  "movements.approve",
+                                                  "reports.view",
+                                                  "alerts.view",
+                                                  "users.manage"
+                                              ]
+                          }
+             }
+}
