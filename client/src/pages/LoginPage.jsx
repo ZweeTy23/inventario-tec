@@ -1,158 +1,129 @@
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Label, TextInput, Button, Alert } from 'flowbite-react'
+import { Mail, Lock, Loader2 } from 'lucide-react'
 import AuthShell from '../components/AuthShell.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
-import { useLocation, useNavigate } from '../router/AppRouter.jsx'
 
 const features = [
   {
-    title: 'Stock',
-    description: 'Existencias y mínimos al instante.',
+    title: 'Control de Stock',
+    description: 'Monitorización en tiempo real de existencias y niveles mínimos.',
   },
   {
     title: 'Movimientos',
-    description: 'Entradas, salidas y traspasos.',
+    description: 'Gestión completa de entradas, salidas y transferencias.',
   },
   {
-    title: 'Alertas',
-    description: 'Stock bajo y productos críticos.',
+    title: 'Alertas IA',
+    description: 'Notificaciones automáticas sobre productos críticos o próximos a vencer.',
+  },
+  {
+    title: 'Multi-Almacén',
+    description: 'Soporte para múltiples sedes y ubicaciones jerárquicas.',
   },
 ]
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
   const fromPath = location.state?.from?.pathname ?? '/app'
+  
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [error, setError] = useState('')
+  const { login, loading } = useAuth()
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  })
-  const [fieldErrors, setFieldErrors] = useState({
-    email: '',
-    password: '',
-  })
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
 
-  function validate(values) {
-    const errors = {
-      email: '',
-      password: '',
-    }
-
-    const email = values.email.trim()
-    const password = values.password.trim()
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-    if (!email) {
-      errors.email = 'Ingresa tu correo electrónico.'
-    } else if (!emailRegex.test(email)) {
-      errors.email = 'Ingresa un correo válido (ejemplo@empresa.com).'
-    }
-
-    if (!password) {
-      errors.password = 'Ingresa tu contraseña.'
-    } else if (password.length < 8) {
-      errors.password = 'La contraseña debe tener al menos 8 caracteres.'
-    }
-
-    return errors
-  }
-
-  function hasErrors(errors) {
-    return Boolean(errors.email || errors.password)
-  }
-
-  function handleChange(event) {
-    const { name, value } = event.target
-    setFormData((currentData) => ({ ...currentData, [name]: value }))
-
-    if (fieldErrors[name]) {
-      const nextValues = { ...formData, [name]: value }
-      const nextErrors = validate(nextValues)
-      setFieldErrors((current) => ({
-        ...current,
-        [name]: nextErrors[name],
-      }))
-    }
-  }
-
-  function handleBlur(event) {
-    const { name, value } = event.target
-    const nextValues = { ...formData, [name]: value }
-    const nextErrors = validate(nextValues)
-    setFieldErrors((current) => ({
-      ...current,
-      [name]: nextErrors[name],
-    }))
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault()
-
-    const nextErrors = validate(formData)
-    setFieldErrors(nextErrors)
-
-    if (hasErrors(nextErrors)) {
+    if (!formData.email || !formData.password) {
+      setError('Por favor, completa todos los campos.')
       return
     }
 
-    login({
-      name: formData.email.split('@')[0],
-      email: formData.email,
-    })
+    const result = await login(formData.email, formData.password)
 
-    navigate(fromPath, { replace: true })
+    if (result.success) {
+      navigate(fromPath, { replace: true })
+    } else {
+      setError(result.error || 'Credenciales inválidas. Verifica tu correo y contraseña.')
+    }
   }
 
   return (
     <AuthShell
       eyebrow="Acceso al sistema"
-      title="Inicia sesión en Inventario TEC"
-      subtitle="Accede al panel operativo de inventario."
+      title="Potencia tu Control de Inventario"
+      subtitle="Gestiona tu almacén con eficiencia, seguridad y precisión total en cada movimiento."
       features={features}
-      footer="Operación centralizada"
+      footer="Plataforma de Inventario TEC"
     >
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <div className="field-grid">
-          <label className="field">
-            <span>Correo electrónico</span>
-            <input
-              autoComplete="email"
-              className={fieldErrors.email ? 'is-invalid' : ''}
-              onBlur={handleBlur}
-              name="email"
-              onChange={handleChange}
-              placeholder="usuario@empresa.com"
-              type="email"
-              value={formData.email}
-            />
-            {fieldErrors.email ? <p className="field-error">{fieldErrors.email}</p> : null}
-          </label>
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        {error && (
+          <Alert color="failure" className="rounded-xl border-l-4">
+            <span className="font-medium text-xs">{error}</span>
+          </Alert>
+        )}
 
-          <label className="field">
-            <span>Contraseña</span>
-            <input
-              autoComplete="current-password"
-              className={fieldErrors.password ? 'is-invalid' : ''}
-              onBlur={handleBlur}
-              name="password"
-              onChange={handleChange}
-              placeholder="Tu contraseña"
-              type="password"
-              value={formData.password}
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2 block">
+              <Label htmlFor="email" value="Correo electrónico" className="font-bold text-gray-700 dark:text-gray-300" />
+            </div>
+            <TextInput
+              id="email"
+              type="email"
+              icon={Mail}
+              placeholder="nombre@empresa.com"
+              required
+              disabled={loading}
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="[&>div>input]:rounded-xl [&>div>input]:border-gray-200"
             />
-            {fieldErrors.password ? (
-              <p className="field-error">{fieldErrors.password}</p>
-            ) : null}
-          </label>
+          </div>
+
+          <div>
+            <div className="mb-2 block flex justify-between items-center">
+              <Label htmlFor="password" value="Contraseña" className="font-bold text-gray-700 dark:text-gray-300" />
+              <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+            <TextInput
+              id="password"
+              type="password"
+              icon={Lock}
+              placeholder="••••••••"
+              required
+              disabled={loading}
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="[&>div>input]:rounded-xl [&>div>input]:border-gray-200"
+            />
+          </div>
         </div>
 
-        <button className="auth-action" type="submit">
-          Entrar al inventario
-        </button>
+        <Button 
+          type="submit" 
+          disabled={loading}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-1 shadow-lg shadow-indigo-200 dark:shadow-none transition-all duration-200 active:scale-[0.98]"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Verificando...</span>
+            </div>
+          ) : (
+            "Iniciar Sesión"
+          )}
+        </Button>
 
-        <div className="auth-helper">
-          <span>¿No tienes acceso? Solicítalo al administrador.</span>
+        <div className="text-center pt-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            ¿No tienes acceso? <span className="font-bold text-indigo-600 cursor-pointer hover:underline">Contacta al Administrador</span>
+          </p>
         </div>
       </form>
     </AuthShell>

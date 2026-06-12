@@ -1,14 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { api } from '../lib/api'
 
 const STORAGE_KEY = 'inventario-tec-auth-session'
+const TOKEN_KEY = 'inventario-tec-token'
 
 const AuthContext = createContext(null)
 
 function readSession() {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
+  if (typeof window === 'undefined') return null
   try {
     const rawSession = window.localStorage.getItem(STORAGE_KEY)
     return rawSession ? JSON.parse(rawSession) : null
@@ -17,73 +16,62 @@ function readSession() {
   }
 }
 
-function saveSession(session) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (session) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
-    return
-  }
-
-  window.localStorage.removeItem(STORAGE_KEY)
-}
-
-function createUserPayload({ name, email }) {
-  const safeEmail = email.trim().toLowerCase()
-  const safeName = name.trim() || safeEmail.split('@')[0] || 'Usuario'
-
-  return {
-    id: crypto.randomUUID(),
-    name: safeName,
-    email: safeEmail,
-    initials: safeName
-      .split(' ')
-      .filter(Boolean)
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase(),
-  }
-}
-
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(() => readSession())
-
-  useEffect(() => {
-    saveSession(session)
-  }, [session])
+  const [loading, setLoading] = useState(false)
 
   const authApi = useMemo(() => {
-    const setAuthenticatedUser = (payload) => {
-      const nextSession = {
-        user: createUserPayload(payload),
-        startedAt: new Date().toISOString(),
-      }
-
-      setSession(nextSession)
-      return { success: true, user: nextSession.user }
-    }
-
     return {
       user: session?.user ?? null,
       isAuthenticated: Boolean(session?.user),
-      login: (payload) => setAuthenticatedUser(payload),
-      register: (payload) => setAuthenticatedUser(payload),
-      logout: () => setSession(null),
+      loading,
+      
+      login: async (email, password) => {
+        setLoading(true)
+        try {
+          const { data } = await api.post('/auth/login', { email, password })
+          
+          localStorage.setItem(TOKEN_KEY, data.token)
+          const nextSession = {
+            user: {
+              ...data.user,
+              initials: data.user.name
+                .split(' ')
+                .filter(Boolean)
+                .map((part) => part[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase(),
+            },
+            startedAt: new Date().toISOString(),
+          }
+          
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession))
+          setSession(nextSession)
+          return { success: true }
+        } catch (error) {
+          console.error('Login error:', error)
+          return { success: false, error: error.message }
+        } finally {
+          setLoading(false)
+        }
+      },
+
+      logout: () => {
+        window.localStorage.removeItem(STORAGE_KEY)
+        window.localStorage.removeItem(TOKEN_KEY)
+        setSession(null)
+      },
     }
-  }, [session])
+  }, [session, loading])
 
   return <AuthContext.Provider value={authApi}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
   const context = useContext(AuthContext)
-
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider')
   }
-
   return context
 }
