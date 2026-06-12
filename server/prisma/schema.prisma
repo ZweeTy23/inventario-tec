@@ -1,10 +1,304 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Enterprise Inventory System
+// Prisma schema with PostgreSQL multi-schema, UUIDs, JSONB, native enums and soft deletes.
+// Docs: https://pris.ly/d/prisma-schema
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["auth", "catalog", "warehouse", "operations", "system_alerts"]
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum LocationType {
+  WAREHOUSE
+  ZONE
+  AISLE
+  SHELF
+  LEVEL
+
+  @@schema("warehouse")
+}
+
+enum MovementType {
+  PURCHASE_ENTRY
+  RETURN_ENTRY
+  SALE_EXIT
+  LOSS_EXIT
+  EXPIRED_EXIT
+  TRANSFER
+
+  @@schema("operations")
+}
+
+enum MovementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("operations")
+}
+
+enum NotificationType {
+  LOW_STOCK
+  EXPIRATION_WARNING
+  MOVEMENT_ALERT
+  SYSTEM_PROCESS
+  APPROVAL_REQUIRED
+
+  @@schema("system_alerts")
+}
+
+// =============================================================================
+// AUTH SCHEMA
+// =============================================================================
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+  @@schema("auth")
+}
+
+model Permission {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  module    String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+  @@schema("auth")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+  @@schema("auth")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  roleId       String    @map("role_id") @db.Uuid
+  name         String    @db.VarChar(150)
+  email        String    @unique @db.VarChar(180)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz()
+
+  role          Role           @relation(fields: [roleId], references: [id])
+  movements     Movement[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([roleId])
+  @@index([deletedAt])
+  @@map("users")
+  @@schema("auth")
+}
+
+// =============================================================================
+// CATALOG SCHEMA
+// =============================================================================
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  parentId  String?  @map("parent_id") @db.Uuid
+  name      String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryToCategory")
+  products Product[]
+
+  @@index([parentId])
+  @@map("categories")
+  @@schema("catalog")
+}
+
+model Supplier {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String   @db.VarChar(180)
+  contactInfo      Json     @default("{}") @map("contact_info") @db.JsonB
+  reliabilityScore Decimal  @default(0) @map("reliability_score") @db.Decimal(5, 2)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  products Product[]
+
+  @@map("suppliers")
+  @@schema("catalog")
+}
+
+model Product {
+  id            String    @id @default(uuid()) @db.Uuid
+  categoryId    String    @map("category_id") @db.Uuid
+  supplierId    String    @map("supplier_id") @db.Uuid
+  sku           String    @unique @db.VarChar(80)
+  name          String    @db.VarChar(200)
+  basePrice     Decimal   @default(0) @map("base_price") @db.Decimal(12, 2)
+  attributes    Json      @default("{}") @db.JsonB
+  minStockAlert Int       @default(0) @map("min_stock_alert")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz()
+
+  category    Category     @relation(fields: [categoryId], references: [id])
+  supplier    Supplier     @relation(fields: [supplierId], references: [id])
+  stockLevels StockLevel[]
+  movements   Movement[]
+
+  @@index([sku])
+  @@index([categoryId])
+  @@index([supplierId])
+  @@index([deletedAt])
+  @@map("products")
+  @@schema("catalog")
+}
+
+// =============================================================================
+// WAREHOUSE SCHEMA
+// =============================================================================
+
+model Location {
+  id           String       @id @default(uuid()) @db.Uuid
+  parentId     String?      @map("parent_id") @db.Uuid
+  name         String       @db.VarChar(150)
+  locationType LocationType @map("location_type")
+  maxCapacity  Int          @default(0) @map("max_capacity")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt    DateTime?    @map("deleted_at") @db.Timestamptz()
+
+  parent          Location?    @relation("LocationToLocation", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Location[]   @relation("LocationToLocation")
+  stockLevels     StockLevel[]
+  sourceMovements Movement[]   @relation("MovementSourceLocation")
+  destMovements   Movement[]   @relation("MovementDestinationLocation")
+
+  @@index([parentId])
+  @@index([locationType])
+  @@index([deletedAt])
+  @@map("locations")
+  @@schema("warehouse")
+}
+
+model StockLevel {
+  id             String    @id @default(uuid()) @db.Uuid
+  productId      String    @map("product_id") @db.Uuid
+  locationId     String    @map("location_id") @db.Uuid
+  quantity       Int       @default(0)
+  batchNumber    String    @map("batch_number") @db.VarChar(80)
+  expirationDate DateTime? @map("expiration_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  product  Product  @relation(fields: [productId], references: [id])
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, locationId, batchNumber])
+  @@index([productId])
+  @@index([locationId])
+  @@index([batchNumber])
+  @@index([expirationDate])
+  @@map("stock_levels")
+  @@schema("warehouse")
+}
+
+// =============================================================================
+// OPERATIONS SCHEMA
+// =============================================================================
+
+model Movement {
+  id                    String         @id @default(uuid()) @db.Uuid
+  productId             String         @map("product_id") @db.Uuid
+  userId                String         @map("user_id") @db.Uuid
+  sourceLocationId      String?        @map("source_location_id") @db.Uuid
+  destinationLocationId String?        @map("destination_location_id") @db.Uuid
+  quantity              Int
+  movementType          MovementType   @map("movement_type")
+  status                MovementStatus @default(PENDING)
+  unitCost              Decimal        @default(0) @map("unit_cost") @db.Decimal(12, 2)
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+
+  product             Product   @relation(fields: [productId], references: [id])
+  user                User      @relation(fields: [userId], references: [id])
+  sourceLocation      Location? @relation("MovementSourceLocation", fields: [sourceLocationId], references: [id])
+  destinationLocation Location? @relation("MovementDestinationLocation", fields: [destinationLocationId], references: [id])
+
+  @@index([productId])
+  @@index([userId])
+  @@index([movementType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("movements")
+  @@schema("operations")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  action        String   @db.VarChar(80)
+  tableAffected String   @map("table_affected") @db.VarChar(120)
+  recordId      String   @map("record_id") @db.Uuid
+  oldData       Json?    @map("old_data") @db.JsonB
+  newData       Json?    @map("new_data") @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([tableAffected])
+  @@index([recordId])
+  @@index([createdAt])
+  @@map("audit_logs")
+  @@schema("operations")
+}
+
+// =============================================================================
+// SYSTEM_ALERTS SCHEMA
+// =============================================================================
+
+model Notification {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String?          @map("user_id") @db.Uuid
+  type       NotificationType
+  message    String           @db.Text
+  entityId   String?          @map("entity_id") @db.Uuid
+  entityType String?          @map("entity_type") @db.VarChar(120)
+  isRead     Boolean          @default(false) @map("is_read")
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+  @@schema("system_alerts")
 }
 
 generator client {
