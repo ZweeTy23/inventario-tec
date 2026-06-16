@@ -1,334 +1,229 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit2, Trash2, Package, AlertTriangle, ArrowRight, Loader2 } from 'lucide-react'
-import { Modal, Label, TextInput, Select, Button } from 'flowbite-react'
+import { Plus, Package, AlertTriangle } from 'lucide-react'
+import { Label, TextInput, Select } from 'flowbite-react'
 import { api } from '../lib/api'
+import { PERMISSIONS } from '../lib/constants'
+import { formatCurrency } from '../lib/format'
+import { usePermissions } from '../hooks/usePermissions'
+import { usePaginatedList } from '../hooks/usePaginatedList'
+import DataTable from '../components/ui/DataTable'
+import Pagination from '../components/ui/Pagination'
+import SearchBar from '../components/ui/SearchBar'
+import ActionButtons from '../components/ui/ActionButtons'
+import FormModal from '../components/ui/FormModal'
+import PageError from '../components/ui/PageError'
+
+const emptyProduct = {
+  name: '', sku: '', categoryId: '', supplierId: '', basePrice: '', minStockAlert: '5',
+}
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState([])
+  const { hasPermission } = usePermissions()
   const [categories, setCategories] = useState([])
   const [suppliers, setSuppliers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-
-  // Modal & Form state
   const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [newProduct, setNewProduct] = useState({
-    name: '',
-    sku: '',
-    categoryId: '',
-    supplierId: '',
-    basePrice: '',
-    minStockAlert: '5'
+  const [form, setForm] = useState(emptyProduct)
+
+  const canCreate = hasPermission(PERMISSIONS.PRODUCTS_CREATE)
+  const canUpdate = hasPermission(PERMISSIONS.PRODUCTS_UPDATE)
+  const canDelete = hasPermission(PERMISSIONS.PRODUCTS_DELETE)
+
+  const { items, meta, loading, error, page, setPage, search, setSearch, refresh } = usePaginatedList('/products', {
+    filters: selectedCategory !== 'all' ? { categoryId: selectedCategory } : {},
   })
 
   useEffect(() => {
-    fetchData()
-  }, [])
-
-  async function fetchData() {
-    try {
-      setLoading(true)
-      const [prodRes, catRes, suppRes] = await Promise.all([
-        api.get('/products'),
-        api.get('/categories'),
-        api.get('/suppliers')
+    async function loadRefs() {
+      const [catRes, suppRes] = await Promise.all([
+        api.get('/categories?perPage=100'),
+        api.get('/suppliers?perPage=100'),
       ])
-      setProducts(prodRes.data)
       setCategories(catRes.data)
       setSuppliers(suppRes.data)
-      
-      if (catRes.data.length > 0 && !newProduct.categoryId) {
-        setNewProduct(prev => ({ ...prev, categoryId: catRes.data[0].id }))
-      }
-      if (suppRes.data.length > 0 && !newProduct.supplierId) {
-        setNewProduct(prev => ({ ...prev, supplierId: suppRes.data[0].id }))
-      }
-    } catch (err) {
-      console.error('Error fetching data:', err)
-      setError('No se pudo cargar la información del catálogo.')
-    } finally {
-      setLoading(false)
     }
+    loadRefs()
+  }, [])
+
+  function openCreate() {
+    setEditing(null)
+    setForm({
+      ...emptyProduct,
+      categoryId: categories[0]?.id ?? '',
+      supplierId: suppliers[0]?.id ?? '',
+    })
+    setShowModal(true)
   }
 
-  const handleCreate = async (e) => {
+  function openEdit(product) {
+    setEditing(product)
+    setForm({
+      name: product.name,
+      sku: product.sku,
+      categoryId: product.categoryId,
+      supplierId: product.supplierId,
+      basePrice: String(product.basePrice),
+      minStockAlert: String(product.minStockAlert),
+    })
+    setShowModal(true)
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      await api.post('/products', {
-        ...newProduct,
-        basePrice: Number(newProduct.basePrice),
-        minStockAlert: Number(newProduct.minStockAlert)
-      })
+      const payload = {
+        name: form.name,
+        sku: form.sku,
+        categoryId: form.categoryId,
+        supplierId: form.supplierId,
+        basePrice: Number(form.basePrice),
+        minStockAlert: Number(form.minStockAlert),
+      }
+      if (editing) {
+        await api.patch(`/products/${editing.id}`, payload)
+      } else {
+        await api.post('/products', payload)
+      }
       setShowModal(false)
-      setNewProduct({
-        name: '',
-        sku: '',
-        categoryId: categories[0]?.id || '',
-        supplierId: suppliers[0]?.id || '',
-        basePrice: '',
-        minStockAlert: '5'
-      })
-      fetchData()
+      refresh()
     } catch (err) {
-      alert(err.message || 'Error al crear producto')
+      alert(err.message || 'Error al guardar producto')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de eliminar este producto?')) return
+  async function handleDelete(id) {
+    if (!window.confirm('¿Eliminar este producto?')) return
     try {
       await api.delete(`/products/${id}`)
-      fetchData()
+      refresh()
     } catch (err) {
-      alert(err.message || 'Error al eliminar producto')
+      alert(err.message || 'Error al eliminar')
     }
   }
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.sku.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === 'all' || p.categoryId === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  const columns = [
+    {
+      key: 'name',
+      header: 'Producto / SKU',
+      render: (row) => (
+        <div className="flex items-center">
+          <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500">
+            <Package size={20} />
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-bold text-gray-900 dark:text-white">{row.name}</div>
+            <div className="text-xs text-gray-500 font-mono uppercase">{row.sku}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Categoría & Proveedor',
+      render: (row) => (
+        <div className="flex flex-col">
+          <span className="text-xs font-medium text-gray-900 dark:text-white">{row.category?.name ?? '—'}</span>
+          <span className="text-[10px] text-gray-500">{row.supplier?.name ?? '—'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'basePrice',
+      header: 'Precio Base',
+      render: (row) => <span className="text-sm font-bold">{formatCurrency(row.basePrice)}</span>,
+    },
+    {
+      key: 'minStockAlert',
+      header: 'Alerta Stock',
+      render: (row) => (
+        <div className="flex items-center text-xs text-gray-500">
+          Mín: {row.minStockAlert}
+          {row._count?.stockLevels <= row.minStockAlert && row._count?.stockLevels > 0 && (
+            <AlertTriangle size={12} className="ml-2 text-amber-500" />
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (row) => (
+        <ActionButtons
+          onEdit={() => openEdit(row)}
+          onDelete={() => handleDelete(row.id)}
+          canEdit={canUpdate}
+          canDelete={canDelete}
+        />
+      ),
+    },
+  ]
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p>Cargando catálogo...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 bg-red-50 text-red-700 rounded-xl border border-red-200">
-        {error}
-      </div>
-    )
-  }
+  if (error) return <PageError message={error} />
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex flex-col sm:flex-row gap-3 flex-1 max-w-2xl">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm"
-              placeholder="Buscar por nombre o SKU..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <select 
+          <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1) }} placeholder="Buscar por nombre o SKU..." className="max-w-none flex-1" />
+          <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+            onChange={(e) => { setSelectedCategory(e.target.value); setPage(1) }}
+            className="block w-full sm:w-48 px-3 py-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm"
           >
             <option value="all">Todas las categorías</option>
-            {categories.map(cat => (
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-        >
-          <Plus className="-ml-1 mr-2 h-5 w-5" />
-          Nuevo Producto
-        </button>
+        {canCreate && (
+          <button onClick={openCreate} className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
+            Nuevo Producto
+          </button>
+        )}
       </div>
-
-      {/* Creation Modal */}
-      <Modal show={showModal} onClose={() => setShowModal(false)}>
-        <Modal.Header>Registrar Nuevo Producto</Modal.Header>
-        <form onSubmit={handleCreate}>
-          <Modal.Body>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name" value="Nombre del Producto" />
-                <TextInput
-                  id="name"
-                  required
-                  value={newProduct.name}
-                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="sku" value="SKU / Código" />
-                <TextInput
-                  id="sku"
-                  required
-                  value={newProduct.sku}
-                  onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="basePrice" value="Precio Base" />
-                  <TextInput
-                    id="basePrice"
-                    type="number"
-                    step="0.01"
-                    required
-                    value={newProduct.basePrice}
-                    onChange={(e) => setNewProduct({ ...newProduct, basePrice: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="minStock" value="Alerta Stock Mín." />
-                  <TextInput
-                    id="minStock"
-                    type="number"
-                    required
-                    value={newProduct.minStockAlert}
-                    onChange={(e) => setNewProduct({ ...newProduct, minStockAlert: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category" value="Categoría" />
-                  <Select
-                    id="category"
-                    required
-                    value={newProduct.categoryId}
-                    onChange={(e) => setNewProduct({ ...newProduct, categoryId: e.target.value })}
-                  >
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="supplier" value="Proveedor" />
-                  <Select
-                    id="supplier"
-                    required
-                    value={newProduct.supplierId}
-                    onChange={(e) => setNewProduct({ ...newProduct, supplierId: e.target.value })}
-                  >
-                    {suppliers.map(sup => (
-                      <option key={sup.id} value={sup.id}>{sup.name}</option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button color="gray" onClick={() => setShowModal(false)}>Cancelar</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Guardar Producto'}
-            </Button>
-          </Modal.Footer>
-        </form>
-      </Modal>
 
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Producto / SKU
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Categoría & Proveedor
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Precio Base
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Configuración
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredProducts.map((product) => {
-                const currentStock = product._count?.stockLevels || 0 
-                const isLowStock = currentStock > 0 && currentStock <= product.minStockAlert
-
-                return (
-                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                          <Package size={20} />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-bold text-gray-900 dark:text-white">{product.name}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono uppercase">{product.sku}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-medium text-gray-900 dark:text-white">{product.category?.name}</span>
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400">{product.supplier?.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                      ${Number(product.basePrice).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <div className="flex items-center">
-                           <span className="text-xs text-gray-500 dark:text-gray-400">Min. Alerta: {product.minStockAlert}</span>
-                           {isLowStock && <AlertTriangle size={12} className="ml-2 text-amber-500" />}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-md">
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(product.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-md"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {filteredProducts.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-gray-500 dark:text-gray-400">
-                    No se encontraron productos.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-900/50 px-6 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            Mostrando <span className="font-bold">{filteredProducts.length}</span> de <span className="font-bold">{products.length}</span> productos
-          </div>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-xs bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50" disabled>Anterior</button>
-            <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-xs bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50" disabled>Siguiente</button>
-          </div>
-        </div>
+        <DataTable columns={columns} data={items} loading={loading} />
+        <Pagination meta={meta} page={page} onPageChange={setPage} />
       </div>
+
+      <FormModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? 'Editar Producto' : 'Nuevo Producto'}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+      >
+        <div className="space-y-4">
+          <div><Label value="Nombre" /><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div><Label value="SKU" /><TextInput required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} disabled={Boolean(editing)} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label value="Precio Base" /><TextInput type="number" step="0.01" required value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })} /></div>
+            <div><Label value="Alerta Stock Mín." /><TextInput type="number" required value={form.minStockAlert} onChange={(e) => setForm({ ...form, minStockAlert: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label value="Categoría" />
+              <Select required value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
+                {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+              </Select>
+            </div>
+            <div>
+              <Label value="Proveedor" />
+              <Select required value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
+                {suppliers.map((sup) => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
+              </Select>
+            </div>
+          </div>
+        </div>
+      </FormModal>
     </div>
   )
 }
