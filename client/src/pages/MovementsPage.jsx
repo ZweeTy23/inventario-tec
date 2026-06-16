@@ -38,6 +38,9 @@ export default function MovementsPage() {
   const [showModal, setShowModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [available, setAvailable] = useState(null)
+  const [availLoading, setAvailLoading] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const canCreate = hasPermission(PERMISSIONS.MOVEMENTS_CREATE)
   const canApprove = hasPermission(PERMISSIONS.MOVEMENTS_APPROVE)
@@ -66,6 +69,38 @@ export default function MovementsPage() {
   const isEntry = ['PURCHASE_ENTRY', 'RETURN_ENTRY'].includes(movementType)
   const isExit = ['SALE_EXIT', 'LOSS_EXIT', 'EXPIRED_EXIT'].includes(movementType)
   const isTransfer = movementType === 'TRANSFER'
+  const consumesStock = isExit || isTransfer
+
+  // Fetch the live available stock for the selected product at the source
+  // location whenever an exit/transfer is being configured.
+  useEffect(() => {
+    if (!showModal || !consumesStock || !form.productId || !form.sourceLocationId) {
+      setAvailable(null)
+      return
+    }
+    let cancelled = false
+    setAvailLoading(true)
+    api
+      .get(`/stock-levels/availability?productId=${form.productId}&locationId=${form.sourceLocationId}`)
+      .then((res) => {
+        if (!cancelled) setAvailable(res.data?.available ?? 0)
+      })
+      .catch(() => {
+        if (!cancelled) setAvailable(null)
+      })
+      .finally(() => {
+        if (!cancelled) setAvailLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [showModal, consumesStock, form.productId, form.sourceLocationId])
+
+  const qtyNum = Number(form.quantity)
+  const qtyValid = Number.isFinite(qtyNum) && qtyNum > 0
+  const exceedsStock = consumesStock && qtyValid && available !== null && qtyNum > available
+  const sameLocation = isTransfer && form.sourceLocationId && form.sourceLocationId === form.destinationLocationId
+  const canSubmit = qtyValid && !exceedsStock && !sameLocation
 
   function openCreate() {
     setForm({
@@ -74,17 +109,32 @@ export default function MovementsPage() {
       destinationLocationId: locations[0]?.id ?? '',
       sourceLocationId: locations[0]?.id ?? '',
     })
+    setAvailable(null)
+    setFormError('')
     setShowModal(true)
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setFormError('')
+    if (!qtyValid) {
+      setFormError('La cantidad debe ser mayor a 0.')
+      return
+    }
+    if (sameLocation) {
+      setFormError('El origen y el destino deben ser diferentes.')
+      return
+    }
+    if (exceedsStock) {
+      setFormError(`Stock insuficiente: disponible ${available} uds, solicitas ${qtyNum}.`)
+      return
+    }
     setIsSubmitting(true)
     try {
       const payload = {
         productId: form.productId,
         movementType: form.movementType,
-        quantity: Number(form.quantity),
+        quantity: qtyNum,
         unitCost: Number(form.unitCost) || 0,
       }
       if (isEntry) payload.destinationLocationId = form.destinationLocationId
@@ -97,7 +147,7 @@ export default function MovementsPage() {
       setShowModal(false)
       refresh()
     } catch (err) {
-      alert(err.message || 'Error al crear movimiento')
+      setFormError(err.message || 'Error al crear movimiento')
     } finally {
       setIsSubmitting(false)
     }
@@ -216,11 +266,12 @@ export default function MovementsPage() {
         title="Registrar Movimiento"
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
+        disabled={!canSubmit}
         size="lg"
       >
         <div className="space-y-4">
           <div>
-            <Label value="Tipo de movimiento" />
+            <Label>Tipo de movimiento</Label>
             <Select value={form.movementType} onChange={(e) => setForm({ ...form, movementType: e.target.value })}>
               {Object.entries(MOVEMENT_TYPES).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
@@ -228,29 +279,61 @@ export default function MovementsPage() {
             </Select>
           </div>
           <div>
-            <Label value="Producto" />
+            <Label>Producto</Label>
             <Select required value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })}>
               {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label value="Cantidad" /><TextInput type="number" min="1" required value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-            <div><Label value="Costo unitario" /><TextInput type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} /></div>
-          </div>
-          {(isEntry || isTransfer) && (
-            <div>
-              <Label value="Ubicación destino" />
-              <Select required value={form.destinationLocationId} onChange={(e) => setForm({ ...form, destinationLocationId: e.target.value })}>
-                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </Select>
-            </div>
-          )}
           {(isExit || isTransfer) && (
             <div>
-              <Label value="Ubicación origen" />
+              <Label>Ubicación origen</Label>
               <Select required value={form.sourceLocationId} onChange={(e) => setForm({ ...form, sourceLocationId: e.target.value })}>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </Select>
+              <p className="mt-1.5 text-xs font-medium">
+                {availLoading ? (
+                  <span className="text-gray-400">Consultando stock disponible…</span>
+                ) : available !== null ? (
+                  <span className={available > 0 ? 'text-gray-500 dark:text-gray-400' : 'text-red-500'}>
+                    Stock disponible en esta ubicación: <span className="font-bold">{available} uds</span>
+                  </span>
+                ) : null}
+              </p>
+            </div>
+          )}
+          {(isEntry || isTransfer) && (
+            <div>
+              <Label>Ubicación destino</Label>
+              <Select required value={form.destinationLocationId} onChange={(e) => setForm({ ...form, destinationLocationId: e.target.value })}>
+                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </Select>
+              {sameLocation && (
+                <p className="mt-1.5 text-xs font-medium text-red-500">El origen y el destino deben ser diferentes.</p>
+              )}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Cantidad</Label>
+              <TextInput
+                type="number"
+                min="1"
+                required
+                color={exceedsStock ? 'failure' : undefined}
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              />
+              {exceedsStock && (
+                <p className="mt-1.5 text-xs font-medium text-red-500">
+                  Supera el stock disponible ({available} uds).
+                </p>
+              )}
+            </div>
+            <div><Label>Costo unitario</Label><TextInput type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} /></div>
+          </div>
+          {formError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-900 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-300">
+              {formError}
             </div>
           )}
         </div>

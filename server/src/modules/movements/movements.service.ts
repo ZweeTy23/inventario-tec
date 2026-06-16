@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { auditLog } from "../../lib/prisma.audit.js";
+import { env } from "../../config/env.js";
 import {
   BadRequestError,
   ConflictError,
@@ -11,8 +12,48 @@ import type {
   ListMovementsQuery,
 } from "./movements.schemas.js";
 import { movementRepository } from "./movements.repository.js";
+import {
+  applyMovementStock,
+  runStockTransaction,
+  type StockMovementContext,
+} from "./stock.engine.js";
 
-const DEFAULT_BATCH = "DEFAULT";
+function toContext(m: {
+  id: string;
+  productId: string;
+  quantity: number;
+  movementType: StockMovementContext["movementType"];
+  sourceLocationId: string | null;
+  destinationLocationId: string | null;
+  unitCost: StockMovementContext["unitCost"];
+  batchNumber: string | null;
+  expirationDate: Date | null;
+}): StockMovementContext {
+  return {
+    id: m.id,
+    productId: m.productId,
+    quantity: m.quantity,
+    movementType: m.movementType,
+    sourceLocationId: m.sourceLocationId,
+    destinationLocationId: m.destinationLocationId,
+    unitCost: m.unitCost,
+    batchNumber: m.batchNumber,
+    expirationDate: m.expirationDate,
+  };
+}
+
+/**
+ * A movement needs explicit managerial approval when it is a loss adjustment
+ * or when its size/value crosses the configured thresholds. Everything else is
+ * applied to real stock the instant it is created.
+ */
+function requiresApproval(input: CreateMovementInput): boolean {
+  if (input.movementType === "LOSS_EXIT") return true;
+  if (input.quantity >= env.MOVEMENT_AUTO_APPROVE_MAX_QTY) return true;
+  const value = input.quantity * (input.unitCost ?? 0);
+  if (value >= env.MOVEMENT_AUTO_APPROVE_MAX_VALUE) return true;
+  return false;
+}
 
 export const movementService = {
   async list(query: ListMovementsQuery) {
@@ -35,18 +76,12 @@ export const movementService = {
   },
 
   /**
-   * Creates a movement in `PENDING` status and emits an approval-required
-   * notification. Stock is *not* moved here; that happens on `approve`.
-   * We do, however, validate that the referenced product/locations exist.
+   * Validates references, then either:
+   *   - auto-applies the movement to stock atomically (normal movements), or
+   *   - records it as PENDING and raises an approval-required alert (loss
+   *     adjustments and unusually large/valuable movements).
    */
   async create(userId: string, input: CreateMovementInput) {
-    // Persist the batch/expiration metadata on the movement payload? The schema
-    // stores those on stock_levels, so we keep them as transient args used when
-    // approving the movement. For traceability we encode them in unitCost+notes
-    // free form via a JSONB column would be ideal, but the spec doesn't include
-    // one, so we keep batch/expiration as args of approve() in non-TRANSFER
-    // flows. To keep them with the pending movement we round-trip through the
-    // batchNumber/expirationDate on the resulting stock_level row at approval.
     const product = await prisma.product.findUnique({
       where: { id: input.productId },
       select: { id: true },
@@ -68,7 +103,30 @@ export const movementService = {
       if (!dst) throw new BadRequestError("destinationLocation not found");
     }
 
-    const created = await movementRepository.create({
+    // Fail fast on exits/transfers that can't be fulfilled, even when the
+    // movement would otherwise be parked as PENDING. The engine still performs
+    // the authoritative atomic check at apply/approval time.
+    const drawsFromSource =
+      input.movementType === "TRANSFER" ||
+      ["SALE_EXIT", "LOSS_EXIT", "EXPIRED_EXIT"].includes(input.movementType);
+    if (drawsFromSource && input.sourceLocationId) {
+      const agg = await prisma.stockLevel.aggregate({
+        _sum: { quantity: true },
+        where: {
+          productId: input.productId,
+          locationId: input.sourceLocationId,
+          ...(input.batchNumber ? { batchNumber: input.batchNumber } : {}),
+        },
+      });
+      const available = agg._sum.quantity ?? 0;
+      if (input.quantity > available) {
+        throw new BadRequestError(
+          `Stock insuficiente en la ubicación de origen: disponible ${available}, solicitado ${input.quantity}`
+        );
+      }
+    }
+
+    const baseData = {
       productId: input.productId,
       userId,
       sourceLocationId: input.sourceLocationId ?? null,
@@ -76,26 +134,56 @@ export const movementService = {
       quantity: input.quantity,
       movementType: input.movementType,
       unitCost: input.unitCost,
-      status: "PENDING",
+      batchNumber: input.batchNumber ?? null,
+      expirationDate: input.expirationDate ?? null,
+      notes: input.notes ?? null,
+    };
+
+    if (requiresApproval(input)) {
+      const created = await movementRepository.create({ ...baseData, status: "PENDING" });
+      await prisma.notification.create({
+        data: {
+          userId: null,
+          type: "APPROVAL_REQUIRED",
+          message: `Movimiento ${input.movementType} de ${input.quantity} uds requiere aprobación gerencial.`,
+          entityId: created.id,
+          entityType: "operations.movements",
+        },
+      });
+      return created;
+    }
+
+    // Auto-apply: create + affect stock atomically in one serializable tx.
+    const movementId = await runStockTransaction(async (tx) => {
+      const m = await tx.movement.create({ data: { ...baseData, status: "APPROVED" } });
+      await applyMovementStock(tx, toContext(m));
+      return m.id;
     });
 
+    await auditLog({
+      userId,
+      action: "AUTO_APPROVE",
+      table: "operations.movements",
+      recordId: movementId,
+      newData: { status: "APPROVED", auto: true, movementType: input.movementType },
+    });
     await prisma.notification.create({
       data: {
         userId: null,
-        type: "APPROVAL_REQUIRED",
-        message: `New ${input.movementType} movement requires approval (qty ${input.quantity})`,
-        entityId: created.id,
+        type: "MOVEMENT_ALERT",
+        message: `Movimiento ${input.movementType} de ${input.quantity} uds aplicado automáticamente.`,
+        entityId: movementId,
         entityType: "operations.movements",
       },
     });
 
-    return created;
+    return this.getById(movementId);
   },
 
   /**
-   * Approves a PENDING movement and atomically adjusts stock levels.
-   * Optional `batchNumber` / `expirationDate` are written to the destination
-   * stock level row on entries and transfers.
+   * Approves a PENDING movement and atomically applies its stock effect.
+   * Optional `batchNumber` / `expirationDate` override what was captured at
+   * creation (handy for entries whose batch is only known on receipt).
    */
   async approve(
     approverId: string,
@@ -107,65 +195,23 @@ export const movementService = {
     if (movement.status !== "PENDING") {
       throw new ConflictError(`Movement is already ${movement.status}`);
     }
-    const batch = extras.batchNumber ?? DEFAULT_BATCH;
 
-    const result = await prisma.$transaction(async (tx) => {
-      // Outgoing leg: decrement source stock (sale/loss/expired/transfer).
-      if (movement.sourceLocationId) {
-        const source = await tx.stockLevel.findUnique({
-          where: {
-            productId_locationId_batchNumber: {
-              productId: movement.productId,
-              locationId: movement.sourceLocationId,
-              batchNumber: batch,
-            },
-          },
-        });
-        if (!source) {
-          throw new BadRequestError(
-            `Source stock for batch "${batch}" not found at source location`
-          );
-        }
-        if (source.quantity < movement.quantity) {
-          throw new BadRequestError(
-            `Insufficient stock: have ${source.quantity}, need ${movement.quantity}`
-          );
-        }
-        await tx.stockLevel.update({
-          where: { id: source.id },
-          data: { quantity: { decrement: movement.quantity } },
-        });
-      }
+    const effectiveBatch = extras.batchNumber ?? movement.batchNumber ?? null;
+    const effectiveExpiration =
+      extras.expirationDate !== undefined ? extras.expirationDate : movement.expirationDate;
 
-      // Incoming leg: increment destination stock (purchase/return/transfer).
-      if (movement.destinationLocationId) {
-        await tx.stockLevel.upsert({
-          where: {
-            productId_locationId_batchNumber: {
-              productId: movement.productId,
-              locationId: movement.destinationLocationId,
-              batchNumber: batch,
-            },
-          },
-          update: {
-            quantity: { increment: movement.quantity },
-            ...(extras.expirationDate !== undefined
-              ? { expirationDate: extras.expirationDate }
-              : {}),
-          },
-          create: {
-            productId: movement.productId,
-            locationId: movement.destinationLocationId,
-            batchNumber: batch,
-            quantity: movement.quantity,
-            expirationDate: extras.expirationDate ?? null,
-          },
-        });
-      }
-
-      return tx.movement.update({
+    await runStockTransaction(async (tx) => {
+      await applyMovementStock(
+        tx,
+        toContext({ ...movement, batchNumber: effectiveBatch, expirationDate: effectiveExpiration })
+      );
+      await tx.movement.update({
         where: { id: movementId },
-        data: { status: "APPROVED" },
+        data: {
+          status: "APPROVED",
+          batchNumber: effectiveBatch,
+          expirationDate: effectiveExpiration,
+        },
       });
     });
 
@@ -178,7 +224,7 @@ export const movementService = {
       newData: { status: "APPROVED" },
     });
 
-    return result;
+    return this.getById(movementId);
   },
 
   async reject(approverId: string, movementId: string, reason?: string) {
@@ -187,7 +233,7 @@ export const movementService = {
     if (movement.status !== "PENDING") {
       throw new ConflictError(`Movement is already ${movement.status}`);
     }
-    const updated = await movementRepository.updateStatus(movementId, "REJECTED");
+    const updated = await movementRepository.updateStatus(movementId, "REJECTED", reason);
     await auditLog({
       userId: approverId,
       action: "REJECT",
@@ -197,5 +243,16 @@ export const movementService = {
       newData: { status: "REJECTED", reason: reason ?? null },
     });
     return updated;
+  },
+
+  /** Weighted-average cost ledger for a product ("Historial de Costos"). */
+  async costHistory(productId: string, limit = 50) {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, name: true, sku: true, averageCost: true },
+    });
+    if (!product) throw new NotFoundError("Product");
+    const history = await movementRepository.costHistory(productId, limit);
+    return { product, history };
   },
 };

@@ -136,8 +136,8 @@ export default function StockLevelsPage() {
           <p className="text-sm text-gray-500">
             {editing?.product?.name} — Lote {editing?.batchNumber}
           </p>
-          <div><Label value="Cantidad" /><TextInput type="number" min="0" required value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-          <div><Label value="Fecha de caducidad" /><TextInput type="date" value={form.expirationDate} onChange={(e) => setForm({ ...form, expirationDate: e.target.value })} /></div>
+          <div><Label>Cantidad</Label><TextInput type="number" min="0" required value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+          <div><Label>Fecha de caducidad</Label><TextInput type="date" value={form.expirationDate} onChange={(e) => setForm({ ...form, expirationDate: e.target.value })} /></div>
         </div>
       </FormModal>
     </div>

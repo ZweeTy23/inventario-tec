@@ -22,6 +22,7 @@ export const CreateMovementSchema = z
     unitCost: z.coerce.number().min(0).optional().default(0),
     batchNumber: z.string().min(1).max(80).optional(),
     expirationDate: z.coerce.date().optional().nullable(),
+    notes: z.string().max(2000).optional(),
   })
   .superRefine((data, ctx) => {
     const entries = ["PURCHASE_ENTRY", "RETURN_ENTRY"];
@@ -87,6 +88,8 @@ export const CreateMovementSchema = z
   });
 
 export const MovementIdSchema = z.object({ id: z.string().uuid() });
+
+export const ProductIdParamSchema = z.object({ productId: z.string().uuid() });
 
 export const ListMovementsQuerySchema = PaginationQuerySchema.extend({
   productId: z.string().uuid().optional(),

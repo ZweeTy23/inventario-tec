@@ -48,4 +48,9 @@ export const movementController = {
     const data = await movementService.reject(req.user.sub, req.params.id as string, body.reason);
     res.json({ data });
   },
+
+  async costHistory(req: Request, res: Response): Promise<void> {
+    const data = await movementService.costHistory(req.params.productId as string);
+    res.json({ data });
+  },
 };
