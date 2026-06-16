@@ -185,14 +185,14 @@ export default function SuppliersPage() {
         isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
-          <div><Label value="Nombre" /><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><Label value="Persona de contacto" /><TextInput value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} /></div>
+          <div><Label>Nombre</Label><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div><Label>Persona de contacto</Label><TextInput value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label value="Email" /><TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-            <div><Label value="Teléfono" /><TextInput value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            <div><Label>Email</Label><TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+            <div><Label>Teléfono</Label><TextInput value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           </div>
-          <div><Label value="Dirección" /><TextInput value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-          <div><Label value="Score de fiabilidad (0-100)" /><TextInput type="number" min="0" max="100" value={form.reliabilityScore} onChange={(e) => setForm({ ...form, reliabilityScore: e.target.value })} /></div>
+          <div><Label>Dirección</Label><TextInput value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          <div><Label>Score de fiabilidad (0-100)</Label><TextInput type="number" min="0" max="100" value={form.reliabilityScore} onChange={(e) => setForm({ ...form, reliabilityScore: e.target.value })} /></div>
         </div>
       </FormModal>
     </div>

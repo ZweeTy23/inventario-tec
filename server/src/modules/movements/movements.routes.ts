@@ -8,6 +8,7 @@ import {
   CreateMovementSchema,
   ListMovementsQuerySchema,
   MovementIdSchema,
+  ProductIdParamSchema,
 } from "./movements.schemas.js";
 
 export const movementRoutes = Router();
@@ -18,6 +19,15 @@ movementRoutes.get(
   requirePermissions(PERMISSIONS.MOVEMENTS_VIEW),
   validate(ListMovementsQuerySchema, "query"),
   movementController.list
+);
+
+// Weighted-average cost ledger for a product. Registered before "/:id" so the
+// literal segment is not swallowed by the id route.
+movementRoutes.get(
+  "/cost-history/:productId",
+  requirePermissions(PERMISSIONS.MOVEMENTS_VIEW),
+  validate(ProductIdParamSchema, "params"),
+  movementController.costHistory
 );
 
 movementRoutes.get(

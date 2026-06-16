@@ -53,11 +53,24 @@ export const movementRepository = {
     return prisma.movement.create({ data, include: MOVEMENT_INCLUDE });
   },
 
-  updateStatus(id: string, status: MovementStatus) {
+  updateStatus(id: string, status: MovementStatus, notes?: string) {
     return prisma.movement.update({
       where: { id },
-      data: { status },
+      data: { status, ...(notes !== undefined ? { notes } : {}) },
       include: MOVEMENT_INCLUDE,
+    });
+  },
+
+  costHistory(productId: string, limit: number) {
+    return prisma.stockCostHistory.findMany({
+      where: { productId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        movement: {
+          select: { id: true, movementType: true, createdAt: true },
+        },
+      },
     });
   },
 };

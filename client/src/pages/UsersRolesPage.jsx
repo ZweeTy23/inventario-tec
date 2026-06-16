@@ -236,14 +236,14 @@ export default function UsersRolesPage() {
         isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
-          <div><Label value="Nombre" /><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><Label value="Email" /><TextInput type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div><Label>Nombre</Label><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div><Label>Email</Label><TextInput type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           <div>
-            <Label value={editing ? 'Nueva contraseña (opcional)' : 'Contraseña'} />
+            <Label>{editing ? 'Nueva contraseña (opcional)' : 'Contraseña'}</Label>
             <TextInput type="password" required={!editing} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </div>
           <div>
-            <Label value="Rol" />
+            <Label>Rol</Label>
             <Select required value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}>
               {roles.map((r) => <option key={r.id} value={r.id}>{ROLE_LABELS[r.name] ?? r.name}</option>)}
             </Select>

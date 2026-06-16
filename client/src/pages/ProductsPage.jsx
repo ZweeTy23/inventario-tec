@@ -202,21 +202,21 @@ export default function ProductsPage() {
         isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
-          <div><Label value="Nombre" /><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><Label value="SKU" /><TextInput required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} disabled={Boolean(editing)} /></div>
+          <div><Label>Nombre</Label><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div><Label>SKU</Label><TextInput required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} disabled={Boolean(editing)} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label value="Precio Base" /><TextInput type="number" step="0.01" required value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })} /></div>
-            <div><Label value="Alerta Stock Mín." /><TextInput type="number" required value={form.minStockAlert} onChange={(e) => setForm({ ...form, minStockAlert: e.target.value })} /></div>
+            <div><Label>Precio Base</Label><TextInput type="number" step="0.01" required value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })} /></div>
+            <div><Label>Alerta Stock Mín.</Label><TextInput type="number" required value={form.minStockAlert} onChange={(e) => setForm({ ...form, minStockAlert: e.target.value })} /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label value="Categoría" />
+              <Label>Categoría</Label>
               <Select required value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
                 {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </Select>
             </div>
             <div>
-              <Label value="Proveedor" />
+              <Label>Proveedor</Label>
               <Select required value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
                 {suppliers.map((sup) => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
               </Select>

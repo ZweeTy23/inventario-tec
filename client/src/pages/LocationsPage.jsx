@@ -190,9 +190,9 @@ export default function LocationsPage() {
         isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
-          <div><Label value="Nombre" /><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div><Label>Nombre</Label><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div>
-            <Label value="Tipo" />
+            <Label>Tipo</Label>
             <Select value={form.locationType} onChange={(e) => setForm({ ...form, locationType: e.target.value })}>
               {Object.entries(LOCATION_TYPES).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -200,7 +200,7 @@ export default function LocationsPage() {
             </Select>
           </div>
           <div>
-            <Label value="Ubicación padre (opcional)" />
+            <Label>Ubicación padre (opcional)</Label>
             <Select value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })}>
               <option value="">Ninguna (raíz)</option>
               {flatLocations.map((l) => (
@@ -208,7 +208,7 @@ export default function LocationsPage() {
               ))}
             </Select>
           </div>
-          <div><Label value="Capacidad máxima" /><TextInput type="number" min="0" value={form.maxCapacity} onChange={(e) => setForm({ ...form, maxCapacity: e.target.value })} /></div>
+          <div><Label>Capacidad máxima</Label><TextInput type="number" min="0" value={form.maxCapacity} onChange={(e) => setForm({ ...form, maxCapacity: e.target.value })} /></div>
         </div>
       </FormModal>
     </div>

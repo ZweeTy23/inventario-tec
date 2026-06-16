@@ -15,5 +15,11 @@ export const ListStockLevelsQuerySchema = PaginationQuerySchema.extend({
   expiringBefore: z.coerce.date().optional(),
 });
 
+export const AvailabilityQuerySchema = z.object({
+  productId: z.string().uuid(),
+  locationId: z.string().uuid().optional(),
+});
+
 export type AdjustStockInput = z.infer<typeof AdjustStockSchema>;
 export type ListStockLevelsQuery = z.infer<typeof ListStockLevelsQuerySchema>;
+export type AvailabilityQuery = z.infer<typeof AvailabilityQuerySchema>;
