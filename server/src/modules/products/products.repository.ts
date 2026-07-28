@@ -5,6 +5,7 @@ import type { Prisma } from "../../../generated/prisma/client.js";
 const PRODUCT_INCLUDE = {
   category: { select: { id: true, name: true } },
   supplier: { select: { id: true, name: true } },
+  stockLevels: { select: { quantity: true } },
 } as const;
 
 export const productRepository = {
@@ -73,7 +74,7 @@ export const productRepository = {
   /** Products whose total stock is below the configured `minStockAlert`. */
   async belowMinStock() {
     const products = await prisma.product.findMany({
-      include: { stockLevels: { select: { quantity: true } }, ...PRODUCT_INCLUDE },
+      include: PRODUCT_INCLUDE,
     });
     return products
       .map((p) => ({

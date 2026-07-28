@@ -138,15 +138,32 @@ export default function ProductsPage() {
       render: (row) => <span className="text-sm font-bold">{formatCurrency(row.basePrice)}</span>,
     },
     {
+      key: 'stock',
+      header: 'Stock Total',
+      render: (row) => {
+        const totalOnHand = (row.stockLevels ?? []).reduce((sum, s) => sum + s.quantity, 0)
+        const isLow = row.minStockAlert > 0 && totalOnHand <= row.minStockAlert
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-bold ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
+              {totalOnHand} uds
+            </span>
+            {isLow && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                <AlertTriangle size={12} className="mr-1" /> Bajo
+              </span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
       key: 'minStockAlert',
-      header: 'Alerta Stock',
+      header: 'Mínimo Alerta',
       render: (row) => (
-        <div className="flex items-center text-xs text-gray-500">
-          Mín: {row.minStockAlert}
-          {row._count?.stockLevels <= row.minStockAlert && row._count?.stockLevels > 0 && (
-            <AlertTriangle size={12} className="ml-2 text-amber-500" />
-          )}
-        </div>
+        <span className="text-xs text-gray-500 font-medium">
+          {row.minStockAlert} uds
+        </span>
       ),
     },
     {
