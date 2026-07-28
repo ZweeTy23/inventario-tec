@@ -94,6 +94,7 @@ export const ProductIdParamSchema = z.object({ productId: z.string().uuid() });
 export const ListMovementsQuerySchema = PaginationQuerySchema.extend({
   productId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
+  locationId: z.string().uuid().optional(),
   movementType: MovementTypeEnum.optional(),
   status: MovementStatusEnum.optional(),
   fromDate: z.coerce.date().optional(),

@@ -60,6 +60,7 @@ export const movementService = {
     const [data, total] = await movementRepository.list({
       productId: query.productId,
       userId: query.userId,
+      locationId: query.locationId,
       movementType: query.movementType,
       status: query.status,
       fromDate: query.fromDate,

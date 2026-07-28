@@ -14,6 +14,7 @@ export const movementRepository = {
   list(filters: {
     productId?: string;
     userId?: string;
+    locationId?: string;
     movementType?: MovementType;
     status?: MovementStatus;
     fromDate?: Date;
@@ -23,6 +24,11 @@ export const movementRepository = {
     const where: Prisma.MovementWhereInput = {
       ...(filters.productId ? { productId: filters.productId } : {}),
       ...(filters.userId ? { userId: filters.userId } : {}),
+      ...(filters.locationId
+        ? {
+            OR: [{ sourceLocationId: filters.locationId }, { destinationLocationId: filters.locationId }],
+          }
+        : {}),
       ...(filters.movementType ? { movementType: filters.movementType } : {}),
       ...(filters.status ? { status: filters.status } : {}),
       ...(filters.fromDate || filters.toDate
