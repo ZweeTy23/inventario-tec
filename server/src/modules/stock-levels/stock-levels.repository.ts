@@ -3,7 +3,7 @@ import type { Prisma } from "../../../generated/prisma/client.js";
 import { skipTake, type PaginationQuery } from "../../shared/utils/pagination.js";
 
 const STOCK_INCLUDE = {
-  product: { select: { id: true, sku: true, name: true } },
+  product: { select: { id: true, sku: true, name: true, minStockAlert: true } },
   location: { select: { id: true, name: true, locationType: true } },
 } as const;
 

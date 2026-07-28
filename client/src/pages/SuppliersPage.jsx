@@ -145,8 +145,16 @@ export default function SuppliersPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-indigo-600">{Number(supplier.reliabilityScore).toFixed(0)}%</div>
-                    <div className="text-[10px] text-gray-400 uppercase font-semibold">Fiabilidad</div>
+                    {(() => {
+                      const score = Number(supplier.reliabilityScore || 0)
+                      const colorClass = score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : score >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                      return (
+                        <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${colorClass}`}>
+                          {score.toFixed(0)}%
+                        </div>
+                      )
+                    })()}
+                    <div className="text-[10px] text-gray-400 uppercase font-semibold mt-1">Fiabilidad</div>
                   </div>
                 </div>
                 <div className="space-y-2 flex-1 text-sm text-gray-600 dark:text-gray-300">
