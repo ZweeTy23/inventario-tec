@@ -1,6 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import type { Prisma } from "../../../generated/prisma/client.js";
-import type { MovementStatus, MovementType } from "../../../generated/prisma/client.js";
+import type { Prisma, MovementStatus, MovementType } from "@prisma/client";
 import { skipTake, type PaginationQuery } from "../../shared/utils/pagination.js";
 
 const MOVEMENT_INCLUDE = {

@@ -1,5 +1,4 @@
-import { Prisma } from "../../../generated/prisma/client.js";
-import type { MovementType } from "../../../generated/prisma/client.js";
+import { Prisma, type MovementType } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
 import { logger } from "../../lib/logger.js";

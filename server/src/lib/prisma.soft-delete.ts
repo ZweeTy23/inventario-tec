@@ -1,4 +1,4 @@
-import { Prisma } from "../../generated/prisma/client.js";
+import { Prisma } from "@prisma/client";
 
 /**
  * Models that support soft delete (have a `deletedAt` column).

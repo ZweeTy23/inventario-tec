@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import type { Prisma } from "../../../generated/prisma/client.js";
+import type { Prisma } from "@prisma/client";
 import { skipTake, type PaginationQuery } from "../../shared/utils/pagination.js";
 
 const STOCK_INCLUDE = {

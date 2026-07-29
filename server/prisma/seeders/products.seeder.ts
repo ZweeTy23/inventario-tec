@@ -1,5 +1,5 @@
 import { prisma } from "../../src/lib/prisma.js";
-import type { Prisma } from "../../generated/prisma/client.js";
+import type { Prisma } from "@prisma/client";
 import { makeProduct } from "../factories/product.factory.js";
 import { faker } from "@faker-js/faker/locale/en";
 

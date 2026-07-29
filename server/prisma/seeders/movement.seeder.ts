@@ -4,7 +4,7 @@ import { faker } from "@faker-js/faker/locale/en";
 import type {
   MovementStatus,
   MovementType,
-} from "../../generated/prisma/enums.js";
+} from "@prisma/client";
 
 const TARGET_COUNT = 200;
 

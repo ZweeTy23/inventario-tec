@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker/locale/en";
-import type { NotificationType } from "../../generated/prisma/enums.js";
+import type { NotificationType } from "@prisma/client";
 
 export interface MakeNotificationOverrides {
   userId?: string | null;

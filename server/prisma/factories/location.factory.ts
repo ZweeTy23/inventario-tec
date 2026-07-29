@@ -1,4 +1,4 @@
-import type { LocationType } from "../../generated/prisma/enums.js";
+import type { LocationType } from "@prisma/client";
 
 export interface MakeLocationOverrides {
   parentId?: string | null;

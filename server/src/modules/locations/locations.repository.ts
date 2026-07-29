@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import type { LocationType, Prisma } from "../../../generated/prisma/client.js";
+import type { LocationType, Prisma } from "@prisma/client";
 import { skipTake, type PaginationQuery } from "../../shared/utils/pagination.js";
 
 const LOCATION_SELECT = {

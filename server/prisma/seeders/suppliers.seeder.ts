@@ -1,5 +1,5 @@
 import { prisma } from "../../src/lib/prisma.js";
-import type { Prisma } from "../../generated/prisma/client.js";
+import type { Prisma } from "@prisma/client";
 import { makeSupplier } from "../factories/supplier.factory.js";
 
 const TARGET_COUNT = 10;

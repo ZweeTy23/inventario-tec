@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker/locale/en";
-import type { MovementStatus, MovementType } from "../../generated/prisma/enums.js";
+import type { MovementStatus, MovementType } from "@prisma/client";
 
 export interface MakeMovementOverrides {
   productId: string;

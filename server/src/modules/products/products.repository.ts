@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { skipTake, type PaginationQuery } from "../../shared/utils/pagination.js";
-import type { Prisma } from "../../../generated/prisma/client.js";
+import type { Prisma } from "@prisma/client";
 
 const PRODUCT_INCLUDE = {
   category: { select: { id: true, name: true } },
