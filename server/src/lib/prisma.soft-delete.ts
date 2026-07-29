@@ -92,7 +92,7 @@ export const softDeleteExtension = Prisma.defineExtension({
         };
         const modelName = ctx.$name.toLowerCase();
         const tableMap: Record<string, { schema: string; table: string }> = {
-          user: { schema: "auth", table: "users" },
+          user: { schema: "app_auth", table: "users" },
           product: { schema: "catalog", table: "products" },
           location: { schema: "warehouse", table: "locations" },
         };

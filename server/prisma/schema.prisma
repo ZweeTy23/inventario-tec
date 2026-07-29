@@ -4,7 +4,7 @@
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["auth", "catalog", "warehouse", "operations", "system_alerts"]
+  schemas  = ["app_auth", "catalog", "warehouse", "operations", "system_alerts"]
 }
 
 // =============================================================================
@@ -65,7 +65,7 @@ model Role {
   rolePermissions RolePermission[]
 
   @@map("roles")
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model Permission {
@@ -79,7 +79,7 @@ model Permission {
 
   @@index([module])
   @@map("permissions")
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model RolePermission {
@@ -91,7 +91,7 @@ model RolePermission {
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 model User {
@@ -114,7 +114,7 @@ model User {
   @@index([roleId])
   @@index([deletedAt])
   @@map("users")
-  @@schema("auth")
+  @@schema("app_auth")
 }
 
 // =============================================================================
