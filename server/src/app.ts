@@ -14,9 +14,15 @@ export function createApp(): Express {
   app.set("trust proxy", 1);
 
   app.use(helmet());
+  const corsOrigin = process.env.FRONTEND_URL || env.FRONTEND_URL || env.CORS_ORIGIN;
+  const allowedOrigins =
+    corsOrigin === "*"
+      ? true
+      : corsOrigin.split(",").map((s) => s.trim());
+
   app.use(
     cors({
-      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map((s) => s.trim()),
+      origin: allowedOrigins,
       credentials: true,
     })
   );

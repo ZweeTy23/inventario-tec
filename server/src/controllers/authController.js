@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Clave secreta para firmar los tokens (Se lee del .env o usa una por defecto)
-const JWT_SECRET = process.env.JWT_SECRET || 'clave_secreta_universitaria_2026';
+// Clave secreta para firmar los tokens (Se lee de las variables de entorno)
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Simulación de Base de Datos Temporal (Arreglo en memoria)
 // Esto permite que el endpoint guarde usuarios mientras el servidor esté corriendo.
