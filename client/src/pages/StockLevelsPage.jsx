@@ -80,11 +80,21 @@ export default function StockLevelsPage() {
     {
       key: 'quantity',
       header: 'Cantidad',
-      render: (row) => (
-        <span className={`text-sm font-bold ${row.quantity <= (row.product?.minStockAlert ?? 0) ? 'text-amber-600' : 'text-gray-900 dark:text-white'}`}>
-          {row.quantity}
-        </span>
-      ),
+      render: (row) => {
+        const isLow = row.product?.minStockAlert > 0 && row.quantity <= row.product.minStockAlert
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-bold ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
+              {row.quantity} uds
+            </span>
+            {isLow && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                Alerta
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'expirationDate',
