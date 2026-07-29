@@ -1,6 +1,6 @@
 import { BadRequestError, NotFoundError } from "../../shared/errors/AppError.js";
 import { buildPaginationMeta } from "../../shared/utils/pagination.js";
-import type { LocationType } from "../../../generated/prisma/enums.js";
+import type { LocationType } from "../../../generated/prisma/client.js";
 import type {
   CreateLocationInput,
   ListLocationsQuery,

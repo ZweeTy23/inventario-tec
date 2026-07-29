@@ -1,5 +1,5 @@
 import { Prisma } from "../../../generated/prisma/client.js";
-import type { MovementType } from "../../../generated/prisma/enums.js";
+import type { MovementType } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
 import { logger } from "../../lib/logger.js";

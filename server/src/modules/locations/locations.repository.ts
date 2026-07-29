@@ -1,6 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import type { LocationType } from "../../../generated/prisma/enums.js";
-import type { Prisma } from "../../../generated/prisma/client.js";
+import type { LocationType, Prisma } from "../../../generated/prisma/client.js";
 import { skipTake, type PaginationQuery } from "../../shared/utils/pagination.js";
 
 const LOCATION_SELECT = {
