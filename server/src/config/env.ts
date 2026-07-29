@@ -12,6 +12,7 @@ const EnvSchema = z.object({
     .default("info"),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   CORS_ORIGIN: z.string().default("*"),
+  FRONTEND_URL: z.string().optional(),
 
   // Transactional stock engine.
   // Movements at or above either threshold (or any LOSS_EXIT) require explicit

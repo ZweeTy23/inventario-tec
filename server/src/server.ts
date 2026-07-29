@@ -5,10 +5,12 @@ import { disconnectPrisma } from "./lib/prisma.js";
 
 const app = createApp();
 
-const server = app.listen(env.PORT, () => {
+const PORT = process.env.PORT || env.PORT || 3000;
+
+const server = app.listen(PORT, () => {
   logger.info(
-    { port: env.PORT, env: env.NODE_ENV },
-    `Inventario API listening on http://localhost:${env.PORT}`
+    { port: PORT, env: env.NODE_ENV },
+    `Inventario API listening on port ${PORT}`
   );
 });
 
