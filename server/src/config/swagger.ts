@@ -12,6 +12,14 @@ export const swaggerDocument = {
   },
   servers: [
     {
+      url: "/api",
+      description: "Servidor Actual (Relativo - Funciona en Producción y Local)",
+    },
+    {
+      url: "https://inventario-tec-6gfk.onrender.com/api",
+      description: "Servidor de Producción (Render)",
+    },
+    {
       url: "http://localhost:3000/api",
       description: "Servidor de Desarrollo Local",
     },
