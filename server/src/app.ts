@@ -2,8 +2,10 @@ import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
+import swaggerUi from "swagger-ui-express";
 import { logger } from "./lib/logger.js";
 import { env } from "./config/env.js";
+import { swaggerDocument } from "./config/swagger.js";
 import { errorMiddleware, notFoundHandler } from "./middlewares/error.middleware.js";
 import { registerRoutes } from "./modules/index.js";
 
@@ -51,6 +53,9 @@ export function createApp(): Express {
       env: env.NODE_ENV,
     });
   });
+
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   registerRoutes(app);
 

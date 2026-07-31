@@ -14,6 +14,7 @@ import {
   Boxes,
   ArrowLeftRight,
   ClipboardList,
+  FileText,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
@@ -29,6 +30,7 @@ const allLinks = [
   { title: 'Ubicaciones', hint: 'Almacén multilevel', href: '/app/ubicaciones', icon: MapPin, permissions: [PERMISSIONS.INVENTORY_VIEW], any: true },
   { title: 'Stock', hint: 'Niveles y lotes', href: '/app/stock', icon: Boxes, permissions: [PERMISSIONS.INVENTORY_VIEW], any: true },
   { title: 'Movimientos', hint: 'Entradas y salidas', href: '/app/movimientos', icon: ArrowLeftRight, permissions: [PERMISSIONS.MOVEMENTS_VIEW, PERMISSIONS.MOVEMENTS_CREATE], any: true },
+  { title: 'Reportes', hint: 'Exportación y análisis', href: '/app/reportes', icon: FileText, permissions: [PERMISSIONS.REPORTS_VIEW], any: true },
   { title: 'Auditoría', hint: 'Bitácora de cambios', href: '/app/auditoria', icon: ClipboardList, permissions: [PERMISSIONS.REPORTS_VIEW], any: true },
   { title: 'Usuarios y roles', hint: 'Gestión de acceso', href: '/app/usuarios', icon: Users, permissions: [] },
 ]

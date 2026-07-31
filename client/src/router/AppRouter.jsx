@@ -15,6 +15,7 @@ import LocationsPage from '../pages/LocationsPage.jsx'
 import StockLevelsPage from '../pages/StockLevelsPage.jsx'
 import MovementsPage from '../pages/MovementsPage.jsx'
 import AuditLogsPage from '../pages/AuditLogsPage.jsx'
+import ReportsPage from '../pages/ReportsPage.jsx'
 
 const router = createBrowserRouter([
   {
@@ -85,6 +86,14 @@ const router = createBrowserRouter([
         element: (
           <PermissionRoute permissions={[PERMISSIONS.MOVEMENTS_VIEW, PERMISSIONS.MOVEMENTS_CREATE, PERMISSIONS.MOVEMENTS_APPROVE]} any>
             <MovementsPage />
+          </PermissionRoute>
+        ),
+      },
+      {
+        path: 'reportes',
+        element: (
+          <PermissionRoute permissions={[PERMISSIONS.REPORTS_VIEW]}>
+            <ReportsPage />
           </PermissionRoute>
         ),
       },

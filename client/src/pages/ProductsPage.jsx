@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Plus, Package, AlertTriangle } from 'lucide-react'
+import { Plus, Package, AlertTriangle, Download, FileSpreadsheet } from 'lucide-react'
 import { Label, TextInput, Select } from 'flowbite-react'
 import { api } from '../lib/api'
 import { PERMISSIONS } from '../lib/constants'
 import { formatCurrency } from '../lib/format'
+import { exportToPDF, exportToExcel } from '../lib/exportUtils'
 import { usePermissions } from '../hooks/usePermissions'
 import { usePaginatedList } from '../hooks/usePaginatedList'
 import DataTable from '../components/ui/DataTable'
@@ -198,12 +199,52 @@ export default function ProductsPage() {
             ))}
           </select>
         </div>
-        {canCreate && (
-          <button onClick={openCreate} className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-            <Plus className="-ml-1 mr-2 h-5 w-5" />
-            Nuevo Producto
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              exportToPDF({
+                title: 'Catálogo de Productos',
+                columns: [
+                  { header: 'Producto', key: 'name' },
+                  { header: 'SKU', key: 'sku' },
+                  { header: 'Precio Base', key: 'basePrice' },
+                  { header: 'Stock Mínimo', key: 'minStockAlert' },
+                ],
+                data: items,
+                filename: 'productos',
+              })
+            }
+            className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+            title="Exportar a PDF"
+          >
+            <Download className="mr-1.5 h-4 w-4 text-red-500" /> PDF
           </button>
-        )}
+          <button
+            onClick={() =>
+              exportToExcel({
+                title: 'Catálogo de Productos',
+                columns: [
+                  { header: 'Producto', key: 'name' },
+                  { header: 'SKU', key: 'sku' },
+                  { header: 'Precio Base', key: 'basePrice' },
+                  { header: 'Stock Mínimo Alerta', key: 'minStockAlert' },
+                ],
+                data: items,
+                filename: 'productos',
+              })
+            }
+            className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+            title="Exportar a Excel"
+          >
+            <FileSpreadsheet className="mr-1.5 h-4 w-4 text-emerald-500" /> Excel
+          </button>
+          {canCreate && (
+            <button onClick={openCreate} className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+              <Plus className="-ml-1 mr-2 h-5 w-5" />
+              Nuevo Producto
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
