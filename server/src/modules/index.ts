@@ -12,6 +12,7 @@ import { movementRoutes } from "./movements/movements.routes.js";
 import { auditLogRoutes } from "./audit-logs/audit-logs.routes.js";
 import { notificationRoutes } from "./notifications/notifications.routes.js";
 import { dashboardRoutes } from "./dashboard/dashboard.routes.js";
+import { reportsRoutes } from "./reports/reports.routes.js";
 
 export function registerRoutes(app: Express): void {
   app.use("/api/auth", authRoutes);
@@ -27,5 +28,6 @@ export function registerRoutes(app: Express): void {
   app.use("/api/audit-logs", auditLogRoutes);
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/dashboard", dashboardRoutes);
+  app.use("/api/reports", reportsRoutes);
 }
 
